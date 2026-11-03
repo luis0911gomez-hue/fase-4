@@ -209,19 +209,129 @@ class Reserva(EntidadSistema):
 # =====================================================================
 # 8. BANCO DE PRUEBAS AUTOMATIZADO - EJECUCIÓN DIRECTA Y LINEAL
 # =====================================================================
-if __name__ == "__main__":
+# =====================================================================
+# 8. BANCO DE PRUEBAS AUTOMATIZADO (CONFORME A LA GUÍA UNAD)
+# =====================================================================
+
+def ejecutar_simulacion_completa():
     print("=" * 70)
     print(" SISTEMA INTEGRAL DE GESTIÓN SOFTWARE FJ - INICIO DE SIMULACIÓN ")
     print("=" * 70)
 
+    # Inicialización limpia del archivo log
     with open("software_fj.log", "w", encoding="utf-8") as f:
         f.write("=== LOG DE OPERACIONES DE SOFTWARE FJ ===\n")
 
     clientes_registrados = []
     servicios_disponibles = []
-    reservas_sistema = []
 
-    print("\n[Operación 1] Registrando clientes válidos...")
-    c1 = Cliente("CLI001", "Diana Arismendi", "diana.a@softwarefj.com")
-    c2 = Cliente("CLI002", "Carlos Mendoza", "carlos.m@gmail.com")
+    # -----------------------------------------------------------------
+    print("\n[PRUEBA 1] Registro exitoso de clientes (Encapsulamiento)")
+    # -----------------------------------------------------------------
+    try:
+        c1 = Cliente("CLI001", "Diana Arismendi", "diana.a@softwarefj.com")
+        c2 = Cliente("CLI002", "Carlos Mendoza", "carlos.m@gmail.com")
+        clientes_registrados.extend([c1, c2])
+        print("-> [ÉXITO] Clientes creados correctamente.")
+        print(f"   * {c1.obtener_detalles()}")
+    except ErrorDatosInvalidos as e:
+        print(f"-> [ERROR INESPERADO]: {e}")
+
+    # -----------------------------------------------------------------
+    print("\n[PRUEBA 2] Validación de datos: Formato de correo erróneo")
+    # -----------------------------------------------------------------
+    try:
+        c_malo = Cliente("CLI003", "Juan Perez", "juan_perez_sin_arroba.com")
+    except ErrorDatosInvalidos as e:
+        registrar_log("ERROR", f"Prueba 2 - Captura correcta: {e}")
+        print(f"-> [ÉXITO CONTROLADO] Excepción capturada: {e}")
+
+    # -----------------------------------------------------------------
+    print("\n[PRUEBA 3] Validación de datos: ID demasiado corto")
+    # -----------------------------------------------------------------
+    try:
+        c_malo2 = Cliente("123", "Ana Gomez", "ana@gomez.com")
+    except ErrorDatosInvalidos as e:
+        registrar_log("ERROR", f"Prueba 3 - Captura correcta: {e}")
+        print(f"-> [ÉXITO CONTROLADO] Excepción capturada: {e}")
+
+    # -----------------------------------------------------------------
+    print("\n[PRUEBA 4] Instanciación del catálogo mediante Polimorfismo")
+    # -----------------------------------------------------------------
+    try:
+        s_sala = ReservaSala("SRV-SAL01", "Sala de Innovación", tarifa_base=45.0, capacidad=12)
+        s_equipo = AlquilerEquipo("SRV-EQ02", "Servidor Dedicado", tarifa_base=120.0, stock_disponible=3)
+        s_asesoria = AsesoriaEspecializada("SRV-ASE03", "Consultoría Cloud", tarifa_base=85.0, consultor_asignado="Ing. Andrés Restrepo")
+        servicios_disponibles.extend([s_sala, s_equipo, s_asesoria])
+        print("-> [ÉXITO] Servicios catalogados bajo la interfaz común 'Servicio'.")
+    except ErrorDatosInvalidos as e:
+        print(f"-> [ERROR INESPERADO]: {e}")
+
+    # -----------------------------------------------------------------
+    print("\n[PRUEBA 5] Validación de negocio: Tarifa base negativa")
+    # -----------------------------------------------------------------
+    try:
+        s_malo = ReservaSala("SRV-ERR", "Sala VIP", tarifa_base=-25.0, capacidad=5)
+    except ErrorDatosInvalidos as e:
+        registrar_log("ERROR", f"Prueba 5 - Captura correcta: {e}")
+        print(f"-> [ÉXITO CONTROLADO] Excepción capturada: {e}")
+
+    # -----------------------------------------------------------------
+    print("\n[PRUEBA 6] Flujo Transaccional Completo (try/except/else/finally)")
+    # -----------------------------------------------------------------
+    # Evaluamos el camino feliz: sin errores de cálculo ni de datos
+    res1 = Reserva("RES-2026-001", clientes_registrados[0], servicios_disponibles[0], duracion=4, tecnologia_avanzada=True)
+    res1.procesar_reserva()
+    print(f"-> [ÉXITO]\n{res1.obtener_detalles()}")
+
+    # -----------------------------------------------------------------
+    print("\n[PRUEBA 7] Simulación de Sobrecarga por firma (Asesoría Extranjera)")
+    # -----------------------------------------------------------------
+    # Se evalúa el cálculo aplicando el recargo impositivo del 19% por kwargs
+    res2 = Reserva("RES-2026-002", clientes_registrados[1], servicios_disponibles[2], duracion=10, es_extranjero=True)
+    res2.procesar_reserva()
+    print(f"-> [ÉXITO]\n{res2.obtener_detalles()}")
+
+    # -----------------------------------------------------------------
+    print("\n[PRUEBA 8] Encadenamiento de Excepciones ('raise ... from e')")
+    # -----------------------------------------------------------------
+    # Forzamos un error de negocio (duración 0) para ver cómo Reserva preserva la causa raíz
+    try:
+        res_error = Reserva("RES-2026-003", clientes_registrados[0], servicios_disponibles[0], duracion=0)
+        res_error.procesar_reserva()
+    except ErrorReservaInvalida as e:
+        registrar_log("CRITICAL", f"Prueba 8 - Fallo integrado: {e}")
+        print(f"-> [ÉXITO CONTROLADO] Transacción rechazada limpiamente.")
+        print(f"   * Excepción principal: {e}")
+        print(f"   * Causa raíz original (__cause__): {e.__cause__}")
+
+    # -----------------------------------------------------------------
+    print("\n[PRUEBA 9] Control de Estado y Bloqueo de Stock")
+    # -----------------------------------------------------------------
+    try:
+        # Agotamos el stock a propósito
+        servicios_disponibles[1].stock_disponible = 0
+        res_stock = Reserva("RES-2026-004", clientes_registrados[0], servicios_disponibles[1], duracion=3)
+        res_stock.procesar_reserva()
+    except ErrorReservaInvalida as e:
+        registrar_log("ERROR", f"Prueba 9 - Stock agotado: {e}")
+        print(f"-> [ÉXITO CONTROLADO] Bloqueo exitoso. Causa: {e.__cause__}")
+
+    # -----------------------------------------------------------------
+    print("\n[PRUEBA 10] Máquina de estados: Evitar doble cancelación")
+    # -----------------------------------------------------------------
+    try:
+        res1.cancelar_reserva() # Primera cancelación: OK
+        res1.cancelar_reserva() # Segunda cancelación: Debe estallar
+    except ErrorReservaInvalida as e:
+        registrar_log("WARNING", f"Prueba 10 - Intento redundante: {e}")
+        print(f"-> [ÉXITO CONTROLADO] Control de estado de flujo verificado: {e}")
+
+    print("\n" + "=" * 70)
+    print(" SIMULACIÓN FINALIZADA CON ÉXITO - TODOS LOS CRITERIOS EVALUADOS ")
+    print(" Revise el archivo 'software_fj.log' para comprobar la auditoría. ")
+    print("=" * 70)
+
+if __name__ == "__main__":
+    ejecutar_simulacion_completa()
 
