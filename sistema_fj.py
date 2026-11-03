@@ -2,7 +2,7 @@ import abc
 import datetime
 
 # =====================================================================
-# 1. EXCEPCIONES PERSONALIZADAS (Estudiante 1)
+# 1. EXCEPCIONES PERSONALIZADAS 
 # =====================================================================
 class ErrorSoftwareFJ(Exception):
     """El papá de todos los errores del sistema."""
@@ -22,7 +22,7 @@ class ErrorReservaInvalida(ErrorSoftwareFJ):
 
 
 # =====================================================================
-# 2. SISTEMA DE REGISTRO DE EVENTOS (Estudiante 1)
+# 2. SISTEMA DE REGISTRO DE EVENTOS 
 # =====================================================================
 def registrar_log(nivel: str, mensaje: str):
     """Guarda los eventos en un bloc de notas llamado 'software_fj.log'."""
@@ -49,7 +49,7 @@ class EntidadSistema(abc.ABC):
 
 
 # =====================================================================
-# 4. CLASE CLIENTE CON ENCAPSULAMIENTO ESTRICTO (Estudiante 2)
+# 4. CLASE CLIENTE CON ENCAPSULAMIENTO ESTRICTO 
 # =====================================================================
 class Cliente(EntidadSistema):
     """Representa un Cliente con validaciones en tiempo real para sus datos."""
@@ -90,3 +90,96 @@ class Cliente(EntidadSistema):
 
     def obtener_detalles(self) -> str:
         return f"Cliente: {self._nombre} | ID: {self._id_cliente} | Correo: {self._email}"
+
+# =====================================================================
+# 5. CLASE ABSTRACTA SERVICIO 
+# =====================================================================
+class Servicio(EntidadSistema, abc.ABC):
+    """Clase abstracta que define la estructura y contrato para todos los servicios."""
+    def __init__(self, id_servicio: str, nombre_servicio: str, tarifa_base: float):
+        self.id_servicio = id_servicio
+        self.nombre_servicio = nombre_servicio
+        if tarifa_base < 0:
+            raise ErrorDatosInvalidos("La tarifa base no puede ser un valor negativo.")
+        self.tarifa_base = tarifa_base
+
+    @abc.abstractmethod
+    def calcular_costo(self, tiempo: int, *args, **kwargs) -> float:
+        """Método polimórfico para calcular los costos específicos de cada servicio."""
+        pass
+
+    def obtener_detalles(self) -> str:
+        return f"Servicio [{self.id_servicio}]: {self.nombre_servicio} | Tarifa Base: ${self.tarifa_base:.2f}"
+
+
+# =====================================================================
+# 6. SUBCLASES ESPECIALIZADAS (Polimorfismo y Sobrecarga - Estudiante 3)
+# =====================================================================
+class ReservaSala(Servicio):
+    """Servicio especializado en la reserva de salas físicas o de co-working."""
+    def __init__(self, id_servicio: str, nombre_servicio: str, tarifa_base: float, capacidad: int):
+        super().__init__(id_servicio, nombre_servicio, tarifa_base)
+        if capacidad <= 0:
+            raise ErrorDatosInvalidos("La capacidad de la sala debe ser mayor a cero.")
+        self.capacidad = capacidad
+
+    def calcular_costo(self, horas: int, *args, **kwargs) -> float:
+        """Calcula el costo por horas. Permite sobrecarga con kwargs de tecnología o catering."""
+        if horas <= 0:
+            raise ErrorDatosInvalidos("Las horas de reserva de la sala deben ser mayores a cero.")
+        
+        costo_total = self.tarifa_base * horas
+        
+        # Simulación de sobrecarga por firma mediante kwargs
+        if kwargs.get("tecnologia_avanzada", False):
+            costo_total += 50.0  # Costo fijo extra
+        if kwargs.get("catering", False):
+            costo_total += 20.0 * horas  # Costo extra por cada hora
+            
+        return costo_total
+
+
+class AlquilerEquipo(Servicio):
+    """Servicio especializado en el préstamo o alquiler de hardware."""
+    def __init__(self, id_servicio: str, nombre_servicio: str, tarifa_base: float, stock_disponible: int):
+        super().__init__(id_servicio, nombre_servicio, tarifa_base)
+        self.stock_disponible = stock_disponible
+
+    def calcular_costo(self, dias: int, *args, **kwargs) -> float:
+        """Calcula el costo por días de alquiler. Valida disponibilidad y aplica descuentos en args."""
+        if self.stock_disponible <= 0:
+            raise ErrorServicioNoDisponible(f"No hay stock disponible para el equipo: {self.nombre_servicio}")
+        if dias <= 0:
+            raise ErrorDatosInvalidos("Los días de alquiler deben ser mayores a cero.")
+            
+        costo_total = self.tarifa_base * dias
+        
+        # Simulación de sobrecarga usando argumentos posicionales opcionales (*args)
+        if args:
+            descuento = args[0]  # El primer argumento extra representa el porcentaje de descuento (0.0 a 1.0)
+            if isinstance(descuento, (int, float)) and 0 <= descuento <= 1:
+                costo_total -= (costo_total * descuento)
+                
+        return costo_total
+
+
+class AsesoriaEspecializada(Servicio):
+    """Servicio de consultoría técnica o arquitectónica de software."""
+    def __init__(self, id_servicio: str, nombre_servicio: str, tarifa_base: float, consultor_asignado: str):
+        super().__init__(id_servicio, nombre_servicio, tarifa_base)
+        if not consultor_asignado:
+            raise ErrorDatosInvalidos("Toda asesoría debe tener un consultor asignado.")
+        self.consultor_asignado = consultor_asignado
+
+    def calcular_costo(self, horas: int, *args, **kwargs) -> float:
+        """Calcula el costo por horas de consultoría. Aplica impuestos si el cliente es extranjero."""
+        if horas <= 0:
+            raise ErrorDatosInvalidos("Las horas de asesoría deben ser superiores a cero.")
+            
+        costo_total = self.tarifa_base * horas
+        
+        # Simulación de sobrecarga mediante kwargs
+        if kwargs.get("es_extranjero", False):
+            costo_total *= 1.19  # Recargo del 19% por impuestos de retención exterior
+            
+        return costo_total
