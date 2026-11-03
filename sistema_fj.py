@@ -39,7 +39,7 @@ def registrar_log(nivel: str, mensaje: str):
 
 
 # =====================================================================
-# 3. ABSTRACCIÓN BASE DEL SISTEMA (Estudiante 2)
+# 3. ABSTRACCIÓN BASE DEL SISTEMA
 # =====================================================================
 class EntidadSistema(abc.ABC):
     """Un molde puro. Obliga a implementar el método obtener_detalles."""
@@ -113,7 +113,7 @@ class Servicio(EntidadSistema, abc.ABC):
 
 
 # =====================================================================
-# 6. SUBCLASES ESPECIALIZADAS (Polimorfismo y Sobrecarga - Estudiante 3)
+# 6. SUBCLASES ESPECIALIZADAS (Polimorfismo y Sobrecarga)
 # =====================================================================
 class ReservaSala(Servicio):
     """Servicio especializado en la reserva de salas físicas o de co-working."""
