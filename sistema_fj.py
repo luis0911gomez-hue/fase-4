@@ -235,3 +235,125 @@ class Reserva(EntidadSistema):
             costo_total *= 1.19  # Recargo del 19% por impuestos de retención exterior
             
         return costo_total
+
+# =====================================================================
+# 8. BANCO DE PRUEBAS AUTOMATIZADO - SIMULACIÓN DE 10 OPERACIONES (Estudiante 5)
+# =====================================================================
+if __name__ == "__main__":
+    print("=" * 70)
+    print("SISTEMA INTEGRAL DE GESTIÓN SOFTWARE FJ - INICIO DE SIMULACIÓN")
+    print("=" * 70)
+    
+    # Inicializamos el archivo de logs limpio para esta simulación
+    with open("software_fj.log", "w", encoding="utf-8") as f:
+        f.write("=== LOG DE OPERACIONES DE SOFTWARE FJ ===\n")
+
+    # Listas globales en memoria para simular el almacenamiento de la aplicación
+    clientes_registrados = []
+    servicios_disponibles = []
+    reservas_sistema = []
+
+    # -----------------------------------------------------------------
+    print("\n[Operación 1] Intentando registrar clientes válidos...")
+    try:
+        c1 = Cliente("CLI001", "Diana Arismendi", "diana.a@softwarefj.com")
+        c2 = Cliente("CLI002", "Carlos Mendoza", "carlos.m@gmail.com")
+        clientes_registrados.extend([c1, c2])
+        print(f"-> [ÉXITO] Clientes registrados de forma segura.")
+    except ErrorDatosInvalidos as e:
+        registrar_log("ERROR", f"Op1 falló: {e}")
+        print(f"-> [FALLO CONTROLADO]: {e}")
+
+    # -----------------------------------------------------------------
+    print("\n[Operación 2] ERROR INTENCIONAL: Registrando cliente con correo inválido...")
+    try:
+        c_invalido = Cliente("CLI003", "Juan Pérez", "juan_perez_sin_arroba.com")
+        clientes_registrados.append(c_invalido)
+    except ErrorDatosInvalidos as e:
+        registrar_log("ERROR", f"Op2 - Validación controlada: {e}")
+        print(f"-> [ÉXITO CONTROLADO] Excepción capturada: {e}")
+
+    # -----------------------------------------------------------------
+    print("\n[Operación 3] ERROR INTENCIONAL: Registrando cliente con ID muy corto...")
+    try:
+        c_invalido2 = Cliente("123", "Ana Gómez", "ana@gomez.com")
+        clientes_registrados.append(c_invalido2)
+    except ErrorDatosInvalidos as e:
+        registrar_log("ERROR", f"Op3 - Validación controlada: {e}")
+        print(f"-> [ÉXITO CONTROLADO] Excepción capturada: {e}")
+
+    # -----------------------------------------------------------------
+    print("\n[Operación 4] Creando catálogo de servicios especializados (Polimorfismo)...")
+    try:
+        s_sala = ReservaSala("SRV-SAL01", "Sala de Innovación y Co-working", tarifa_base=45.0, capacidad=12)
+        s_equipo = AlquilerEquipo("SRV-EQ02", "Servidor Dedicado de Pruebas", tarifa_base=120.0, stock_disponible=3)
+        s_asesoria = AsesoriaEspecializada("SRV-ASE03", "Consultoría Arquitectura Cloud", tarifa_base=85.0, consultor_asignado="Ing. Andrés Restrepo")
+        servicios_disponibles.extend([s_sala, s_equipo, s_asesoria])
+        print("-> [ÉXITO] Todos los servicios fueron instanciados y catalogados.")
+    except ErrorDatosInvalidos as e:
+        registrar_log("ERROR", f"Op4 falló: {e}")
+        print(f"-> [FALLO]: {e}")
+
+    # -----------------------------------------------------------------
+    print("\n[Operación 5] ERROR INTENCIONAL: Creando servicio con tarifa negativa...")
+    try:
+        s_error = ReservaSala("SRV-ERR", "Sala de Soporte", tarifa_base=-10.0, capacidad=5)
+    except ErrorDatosInvalidos as e:
+        registrar_log("ERROR", f"Op5 - Operación no permitida: {e}")
+        print(f"-> [ÉXITO CONTROLADO] Excepción capturada: {e}")
+
+    # -----------------------------------------------------------------
+    print("\n[Operación 6] Procesando Reserva Válida (Sala + Tecnología Avanzada y Sobrecarga)...")
+    try:
+        res1 = Reserva("RES-2026-001", clientes_registrados[0], servicios_disponibles[0], duracion=4, tecnologia_avanzada=True)
+        res1.procesar_reserva()
+        reservas_sistema.append(res1)
+        print(f"-> [ÉXITO]\n{res1.obtener_detalles()}")
+    except ErrorReservaInvalida as e:
+        registrar_log("CRITICAL", f"Op6 falló: {e}")
+        print(f"-> [FALLO]: {e}")
+
+    # -----------------------------------------------------------------
+    print("\n[Operación 7] Procesando Reserva Válida (Asesoría Internacional + Impuesto)...")
+    try:
+        res2 = Reserva("RES-2026-002", clientes_registrados[1], servicios_disponibles[2], duracion=10, es_extranjero=True)
+        res2.procesar_reserva()
+        reservas_sistema.append(res2)
+        print(f"-> [ÉXITO]\n{res2.obtener_detalles()}")
+    except ErrorReservaInvalida as e:
+        registrar_log("CRITICAL", f"Op7 falló: {e}")
+        print(f"-> [FALLO]: {e}")
+
+    # -----------------------------------------------------------------
+    print("\n[Operación 8] ERROR INTENCIONAL: Procesando Reserva con duración en cero...")
+    try:
+        res_error1 = Reserva("RES-2026-003", clientes_registrados[0], servicios_disponibles[0], duracion=0)
+        res_error1.procesar_reserva()
+    except ErrorReservaInvalida as e:
+        registrar_log("ERROR", f"Op8 - Error esperado en transacciones: {e}")
+        print(f"-> [ÉXITO CONTROLADO] La reserva falló de forma limpia. Causa raíz: {e.__cause__}")
+
+    # -----------------------------------------------------------------
+    print("\n[Operación 9] ERROR INTENCIONAL: Provocando quiebre de stock en alquiler de equipos...")
+    try:
+        # Agotamos el stock manualmente para simular el error de stock
+        servicios_disponibles[1].stock_disponible = 0
+        res_error2 = Reserva("RES-2026-004", clientes_registrados[0], servicios_disponibles[1], duracion=5)
+        res_error2.procesar_reserva()
+    except ErrorReservaInvalida as e:
+        registrar_log("ERROR", f"Op9 - Error esperado de Stock: {e}")
+        print(f"-> [ÉXITO CONTROLADO] Reserva bloqueada correctamente. Causa raíz: {e.__cause__}")
+
+    # -----------------------------------------------------------------
+    print("\n[Operación 10] ERROR INTENCIONAL: Forzando cancelación errónea consecutiva...")
+    try:
+        reservas_sistema[0].cancelar_reserva()  # Primera cancelación (Válida)
+        reservas_sistema[0].cancelar_reserva()  # Segunda cancelación (Debe arrojar Excepción)
+    except ErrorReservaInvalida as e:
+        registrar_log("WARNING", f"Op10 - Intento redundante: {e}")
+        print(f"-> [ÉXITO CONTROLADO] Control de estado de flujo exitoso: {e}")
+
+    print("\n" + "=" * 70)
+    print("SIMULACIÓN FINALIZADA CON ÉXITO - EL SISTEMA NUNCA SE DETUVO")
+    print("Por favor revise el archivo 'software_fj.log' generado en el directorio.")
+    print("=" * 70)
