@@ -178,6 +178,58 @@ class AsesoriaEspecializada(Servicio):
             
         costo_total = self.tarifa_base * horas
         
+# =====================================================================
+# 7. CLASE RESERVA CON MANEJO AVANZADO DE EXCEPCIONES 
+# =====================================================================
+class Reserva(EntidadSistema):
+    """Clase transaccional que integra Cliente, Servicio y controla el flujo de la operación."""
+    def __init__(self, id_reserva: str, cliente: Cliente, servicio: Servicio, duracion: int, **opciones_costo):
+        if not id_reserva:
+            raise ErrorReservaInvalida("El ID de la reserva no puede estar vacío.")
+        self.id_reserva = id_reserva
+        self.cliente = cliente
+        self.servicio = servicio
+        self.duracion = duracion
+        self.estado = "PENDIENTE"
+        self.opciones_costo = opciones_costo
+        self.costo_calculado = 0.0
+
+    def procesar_reserva(self):
+        """
+        Calcula costos y confirma la reserva usando estructuras try/except/else/finally.
+        Demuestra el encadenamiento de excepciones si el cálculo falla internamente.
+        """
+        try:
+            registrar_log("INFO", f"Iniciando procesamiento de Reserva {self.id_reserva}")
+            # Invocación polimórfica del método para calcular el costo del servicio
+            self.costo_calculado = self.servicio.calcular_costo(self.duracion, **self.opciones_costo)
+            
+        except ErrorSoftwareFJ as e:
+            self.estado = "FALLIDA"
+            # ENCADENAMIENTO DE EXCEPCIONES: Se preserva la causa raíz original usando 'from'
+            raise ErrorReservaInvalida(f"No se pudo procesar la reserva {self.id_reserva} debido a un error de negocio.") from e
+        except Exception as e:
+            self.estado = "ERRÓNEA"
+            raise ErrorReservaInvalida(f"Fallo crítico inesperado en la Reserva {self.id_reserva}") from e
+        else:
+            # Se ejecuta UNICAMENTE si el bloque try no arrojó ninguna excepción
+            self.estado = "CONFIRMADA"
+            registrar_log("SUCCESS", f"Reserva {self.id_reserva} procesada con éxito por ${self.costo_calculado:.2f}")
+        finally:
+            # Se ejecuta SIEMPRE para asegurar la auditoría del estado final de la reserva
+            registrar_log("INFO", f"Finalizó evaluación de la Reserva {self.id_reserva}. Estado actual: {self.estado}")
+
+    def cancelar_reserva(self):
+        """Cancela la reserva activa. Controla que no se intente cancelar doble vez."""
+        if self.estado == "CANCELADA":
+            raise ErrorReservaInvalida(f"La reserva {self.id_reserva} ya se encuentra cancelada.")
+        self.estado = "CANCELADA"
+        registrar_log("INFO", f"Reserva {self.id_reserva} ha sido cancelada por el cliente.")
+
+    def obtener_detalles(self) -> str:
+        return (f"Reserva: {self.id_reserva} | Estado: {self.estado} | "
+                f"Costo: ${self.costo_calculado:.2f} \n\t-> {self.cliente.obtener_detalles()} \n\t-> {self.servicio.obtener_detalles()}")
+
         # Simulación de sobrecarga mediante kwargs
         if kwargs.get("es_extranjero", False):
             costo_total *= 1.19  # Recargo del 19% por impuestos de retención exterior
