@@ -20,6 +20,15 @@ class ErrorReservaInvalida(ErrorSoftwareFJ):
     """Para cuando intenten cancelar dos veces o reservar 0 horas."""
     pass
 
+class ErrorRegistroDuplicado(ErrorSoftwareFJ):
+    """Se genera cuando se intenta registrar un elemento con un ID existente."""
+    pass
+
+
+class ErrorElementoNoEncontrado(ErrorSoftwareFJ):
+    """Se genera cuando un cliente, servicio o reserva no existe."""
+    pass
+
 # =====================================================================
 # 2. SISTEMA DE REGISTRO DE EVENTOS
 # =====================================================================
@@ -206,11 +215,92 @@ class Reserva(EntidadSistema):
                 f"\t-> {self.cliente.obtener_detalles()}\n"
                 f"\t-> {self.servicio.obtener_detalles()}")
 
+    # =====================================================================
+# 8. SISTEMA CENTRALIZADO DE GESTIÓN
+# Aporte: Julieth Alejandra Bautista Bermudez
 # =====================================================================
-# 8. BANCO DE PRUEBAS AUTOMATIZADO - EJECUCIÓN DIRECTA Y LINEAL
+class SistemaGestion:
+    """
+    Administra de forma centralizada clientes, servicios y reservas.
+    Evita registros duplicados y permite búsquedas controladas por ID.
+    """
+
+    def __init__(self):
+        self.clientes = []
+        self.servicios = []
+        self.reservas = []
+
+    def registrar_cliente(self, cliente: Cliente):
+        for cliente_registrado in self.clientes:
+            if cliente_registrado.id_cliente == cliente.id_cliente:
+                raise ErrorRegistroDuplicado(
+                    f"Ya existe un cliente con el ID {cliente.id_cliente}."
+                )
+
+        self.clientes.append(cliente)
+        registrar_log(
+            "INFO",
+            f"Cliente {cliente.id_cliente} registrado correctamente."
+        )
+
+    def registrar_servicio(self, servicio: Servicio):
+        for servicio_registrado in self.servicios:
+            if servicio_registrado.id_servicio == servicio.id_servicio:
+                raise ErrorRegistroDuplicado(
+                    f"Ya existe un servicio con el ID {servicio.id_servicio}."
+                )
+
+        self.servicios.append(servicio)
+        registrar_log(
+            "INFO",
+            f"Servicio {servicio.id_servicio} registrado correctamente."
+        )
+
+    def registrar_reserva(self, reserva: Reserva):
+        for reserva_registrada in self.reservas:
+            if reserva_registrada.id_reserva == reserva.id_reserva:
+                raise ErrorRegistroDuplicado(
+                    f"Ya existe una reserva con el ID {reserva.id_reserva}."
+                )
+
+        self.reservas.append(reserva)
+        registrar_log(
+            "INFO",
+            f"Reserva {reserva.id_reserva} registrada correctamente."
+        )
+
+    def buscar_cliente(self, id_cliente: str) -> Cliente:
+        for cliente in self.clientes:
+            if cliente.id_cliente == id_cliente:
+                return cliente
+
+        raise ErrorElementoNoEncontrado(
+            f"No existe un cliente con el ID {id_cliente}."
+        )
+
+    def buscar_servicio(self, id_servicio: str) -> Servicio:
+        for servicio in self.servicios:
+            if servicio.id_servicio == id_servicio:
+                return servicio
+
+        raise ErrorElementoNoEncontrado(
+            f"No existe un servicio con el ID {id_servicio}."
+        )
+
+    def buscar_reserva(self, id_reserva: str) -> Reserva:
+        for reserva in self.reservas:
+            if reserva.id_reserva == id_reserva:
+                return reserva
+
+        raise ErrorElementoNoEncontrado(
+            f"No existe una reserva con el ID {id_reserva}."
+        )
+
+# =====================================================================
+# 9. BANCO DE PRUEBAS AUTOMATIZADO - EJECUCIÓN DIRECTA Y LINEAL
 # =====================================================================
 # =====================================================================
-# 8. BANCO DE PRUEBAS AUTOMATIZADO (CONFORME A LA GUÍA UNAD)
+# 9. BANCO DE PRUEBAS AUTOMATIZADO (CONFORME A LA GUÍA UNAD)
 # =====================================================================
 
 def ejecutar_simulacion_completa():
@@ -327,6 +417,62 @@ def ejecutar_simulacion_completa():
         registrar_log("WARNING", f"Prueba 10 - Intento redundante: {e}")
         print(f"-> [ÉXITO CONTROLADO] Control de estado de flujo verificado: {e}")
 
+            # -----------------------------------------------------------------
+    print("\n[PRUEBA 11] Gestión centralizada: Registro correcto de cliente")
+    # -----------------------------------------------------------------
+    sistema = SistemaGestion()
+
+    try:
+        cliente_nuevo = Cliente("CLI100", "Julieth Bautista", "julieth@softwarefj.com")
+        sistema.registrar_cliente(cliente_nuevo)
+        print("-> [ÉXITO] Cliente registrado correctamente en SistemaGestion.")
+    except ErrorSoftwareFJ as e:
+        print(f"-> [ERROR INESPERADO]: {e}")
+
+    # -----------------------------------------------------------------
+    print("\n[PRUEBA 12] Gestión centralizada: Cliente duplicado")
+    # -----------------------------------------------------------------
+    try:
+        sistema.registrar_cliente(cliente_nuevo)
+    except ErrorRegistroDuplicado as e:
+        registrar_log("WARNING", f"Prueba 12 - Registro duplicado controlado: {e}")
+        print(f"-> [ÉXITO CONTROLADO] Registro duplicado detectado: {e}")
+
+    # -----------------------------------------------------------------
+    print("\n[PRUEBA 13] Gestión centralizada: Búsqueda de cliente inexistente")
+    # -----------------------------------------------------------------
+    try:
+        sistema.buscar_cliente("CLI999")
+    except ErrorElementoNoEncontrado as e:
+        registrar_log("ERROR", f"Prueba 13 - Elemento no encontrado: {e}")
+        print(f"-> [ÉXITO CONTROLADO] Búsqueda inválida controlada: {e}")
+
+    # -----------------------------------------------------------------
+    print("\n[PRUEBA 14] Gestión centralizada: Registro de servicio y reserva")
+    # -----------------------------------------------------------------
+    try:
+        servicio_nuevo = ReservaSala(
+            "SRV-100",
+            "Sala Ejecutiva",
+            tarifa_base=60.0,
+            capacidad=8
+        )
+
+        sistema.registrar_servicio(servicio_nuevo)
+
+        reserva_nueva = Reserva(
+            "RES-100",
+            cliente_nuevo,
+            servicio_nuevo,
+            duracion=2
+        )
+
+        sistema.registrar_reserva(reserva_nueva)
+
+        print("-> [ÉXITO] Servicio y reserva registrados correctamente.")
+    except ErrorSoftwareFJ as e:
+        print(f"-> [ERROR INESPERADO]: {e}")
+
     print("\n" + "=" * 70)
     print(" SIMULACIÓN FINALIZADA CON ÉXITO - TODOS LOS CRITERIOS EVALUADOS ")
     print(" Revise el archivo 'software_fj.log' para comprobar la auditoría. ")
@@ -334,4 +480,3 @@ def ejecutar_simulacion_completa():
 
 if __name__ == "__main__":
     ejecutar_simulacion_completa()
-
